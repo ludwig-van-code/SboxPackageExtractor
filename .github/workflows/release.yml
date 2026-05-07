@@ -17,12 +17,10 @@ jobs:
         include:
           - os: windows-latest
             runtime: win-x64
-            binary_name: PackageExtractor.exe
-            output_name: PackageExtractor-win-x64.exe
+            zip_name: PackageExtractor-win-x64.zip
           - os: ubuntu-latest
             runtime: linux-x64
-            binary_name: PackageExtractor
-            output_name: PackageExtractor-linux-x64
+            zip_name: PackageExtractor-linux-x64.zip
 
     steps:
     - name: Checkout repository
@@ -44,20 +42,19 @@ jobs:
           -c Release \
           -r ${{ matrix.runtime }} \
           --self-contained true \
-          -p:PublishSingleFile=true \
           -p:PublishTrimmed=false \
-          -p:NoWarn=IL3000 \
+          -p:NoWarn=CS1591 \
           -o ./publish
 
-    - name: Rename Binary
+    - name: Create Zip
       shell: bash
-      run: mv ./publish/${{ matrix.binary_name }} ./publish/${{ matrix.output_name }}
+      run: cd ./publish && zip -r ../${{ matrix.zip_name }} .
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
         name: binary-${{ matrix.runtime }}
-        path: ./publish/${{ matrix.output_name }}
+        path: ./${{ matrix.zip_name }}
         retention-days: 1
 
   release:
