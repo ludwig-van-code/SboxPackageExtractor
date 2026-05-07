@@ -1,0 +1,3 @@
+[submodule "sbox-public"]
+	path = sbox-public
+	url = https://github.com/Facepunch/sbox-public.git
