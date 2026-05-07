@@ -47,8 +47,8 @@ jobs:
           -o ./publish
 
     - name: Create Zip
-      shell: bash
-      run: cd ./publish && zip -r ../${{ matrix.zip_name }} .
+      shell: pwsh
+      run: Compress-Archive -Path ./publish/* -DestinationPath ./${{ matrix.zip_name }}
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
