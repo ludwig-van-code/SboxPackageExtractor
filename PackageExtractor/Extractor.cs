@@ -10,16 +10,33 @@ public class Extractor(string baseOutputDir)
         Log.Info($"Searching for game cll in: {searchPath}");
 
         RuntimeHelper.BootstrapRuntimeAssemblies(searchPath);
-        
-        var files = Directory.EnumerateFiles(searchPath, "*.cll", SearchOption.AllDirectories).ToList();
-        
-        if (files.Count == 0)
+
+        var binPath = Path.Combine(searchPath, "download", "assets", "_bin");
+        List<string> allFiles;
+
+        if (Directory.Exists(binPath))
+        {
+            Log.Info($"Found assets bin directory: {binPath}");
+            allFiles = Directory.EnumerateFiles(binPath, "*.cll", SearchOption.AllDirectories).ToList();
+        }
+        else
+        {
+            Log.Warning($"Assets bin directory not found at: {binPath}, falling back to recursive search...");
+            allFiles = Directory.EnumerateFiles(searchPath, "*.cll", SearchOption.AllDirectories).ToList();
+        }
+
+        if (allFiles.Count == 0)
         {
             Log.Info("No game cll found.");
             return;
         }
 
-        Log.Info($"Found {files.Count} game cll. Starting parallel processing...");
+        var files = allFiles
+            .GroupBy(f => GetPackageGroupKey(f))
+            .Select(g => g.OrderByDescending(f => File.GetLastWriteTimeUtc(f)).First())
+            .ToList();
+
+        Log.Info($"Found {allFiles.Count} game cll ({files.Count} unique packages). Starting parallel processing...");
 
         var options = new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount };
 
@@ -33,6 +50,17 @@ public class Extractor(string baseOutputDir)
 
         Console.WriteLine();
         Log.Success("All game cll processed successfully.");
+    }
+
+    private static string GetPackageGroupKey(string filePath)
+    {
+        var fileName = Path.GetFileNameWithoutExtension(filePath);
+        var dotIndex = fileName.LastIndexOf('.');
+        if (dotIndex > 0)
+        {
+            return fileName[..dotIndex];
+        }
+        return fileName;
     }
 
     private async Task ProcessArchiveAsync(string filePath)

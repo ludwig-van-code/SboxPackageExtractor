@@ -19,7 +19,14 @@ public static class Program
             return;
         }
 
-        var extractor = new Extractor(rootOutputFolder);
-        await extractor.ExecuteAsync(searchPath);
+        try
+        {
+            var extractor = new Extractor(rootOutputFolder);
+            await extractor.ExecuteAsync(searchPath);
+        }
+        finally
+        {
+            Console.ResetColor();
+        }
     }
 }

@@ -157,14 +157,45 @@ public static class RuntimeHelper
 
     private static string? GetDotNetRoot()
     {
-        var candidates = new[]
-        {
-            Environment.GetEnvironmentVariable("DOTNET_ROOT"),
-            Environment.GetEnvironmentVariable("DOTNET_ROOT(x86)"),
-            GetDotNetRootFromAssembly(typeof(object).Assembly.Location)
-        };
+        var candidates = new List<string?>();
 
-        return candidates.FirstOrDefault(path => !string.IsNullOrWhiteSpace(path) && Directory.Exists(path));
+        candidates.Add(Environment.GetEnvironmentVariable("DOTNET_ROOT"));
+        candidates.Add(Environment.GetEnvironmentVariable("DOTNET_ROOT(x86)"));
+
+        var assemblyLocation = typeof(object).Assembly.Location;
+        if (!string.IsNullOrWhiteSpace(assemblyLocation))
+        {
+            candidates.Add(GetDotNetRootFromAssembly(assemblyLocation));
+        }
+
+        try
+        {
+            var runtimeDir = System.Runtime.InteropServices.RuntimeEnvironment.GetRuntimeDirectory();
+            if (!string.IsNullOrWhiteSpace(runtimeDir))
+            {
+                candidates.Add(GetDotNetRootFromDirectory(runtimeDir));
+            }
+        }
+        catch
+        {
+            // ignore
+        }
+
+        if (OperatingSystem.IsWindows())
+        {
+            candidates.Add(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "dotnet"));
+        }
+        else
+        {
+            candidates.Add("/usr/share/dotnet");
+            candidates.Add("/usr/local/share/dotnet");
+            var home = Environment.GetEnvironmentVariable("HOME");
+            if (!string.IsNullOrWhiteSpace(home))
+                candidates.Add(Path.Combine(home, ".dotnet"));
+        }
+
+        return candidates.FirstOrDefault(path => !string.IsNullOrWhiteSpace(path) && Directory.Exists(path) 
+            && Directory.Exists(Path.Combine(path, "packs")));
     }
 
     private static string? GetDotNetRootFromAssembly(string assemblyPath)
@@ -173,6 +204,11 @@ public static class RuntimeHelper
             return null;
 
         var directoryPath = Path.GetDirectoryName(assemblyPath);
+        return GetDotNetRootFromDirectory(directoryPath);
+    }
+
+    private static string? GetDotNetRootFromDirectory(string? directoryPath)
+    {
         if (string.IsNullOrWhiteSpace(directoryPath))
             return null;
 
